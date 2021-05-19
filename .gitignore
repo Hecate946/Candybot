@@ -1,0 +1,10 @@
+.idea
+.vscode
+.venv
+.vscode
+*.DS_Store
+*__pycache__
+*.json
+*.log
+*.rdb
+**.jdk
