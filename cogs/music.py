@@ -10,6 +10,7 @@ import wavelink
 from discord.ext import commands
 
 from settings import constants
+from utilities import utils
 from utilities import decorators
 from utilities import exceptions
 
@@ -101,7 +102,7 @@ class Queue:
     def set_repeat_mode(self, mode):
         if mode == "none":
             self.repeat_mode = RepeatMode.NONE
-        elif mode == "1":
+        elif mode in ["1", "one"]:
             self.repeat_mode = RepeatMode.ONE
         elif mode == "all":
             self.repeat_mode = RepeatMode.ALL
@@ -241,7 +242,7 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
                 "rest_uri": "http://127.0.0.1:2333",
                 "password": "youshallnotpass",
                 "identifier": "MAIN",
-                "region": "us_central",
+                "region": "us_west",
             }
         }
 
@@ -263,7 +264,7 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
     @connect_command.error
     async def connect_command_error(self, ctx, exc):
         if isinstance(exc, exceptions.AlreadyConnectedToChannel):
-            await ctx.send("Already connected to a voice channel.")
+            await ctx.fail("Already connected to a voice channel.")
         elif isinstance(exc, exceptions.NoVoiceChannel):
             await ctx.send("No suitable voice channel was provided.")
 
@@ -273,7 +274,7 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
         await player.teardown()
         await ctx.react("Disconnected.")
 
-    @decorators.command(name="play")
+    @decorators.command(name="play", aliases=["p"])
     async def play_command(self, ctx, *, query: t.Optional[str]):
         player = self.get_player(ctx)
 
@@ -323,7 +324,7 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
         await player.stop()
         await ctx.send("Playback stopped.")
 
-    @decorators.command(name="next", aliases=["skip"])
+    @decorators.command(name="next", aliases=["skip","fs"])
     async def next_command(self, ctx):
         player = self.get_player(ctx)
 
@@ -336,7 +337,7 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
     @next_command.error
     async def next_command_error(self, ctx, exc):
         if isinstance(exc, exceptions.QueueIsEmpty):
-            await ctx.send("This could not be executed as the queue is currently empty.")
+            await ctx.send("The queue is currently empty.")
         elif isinstance(exc, exceptions.NoMoreTracks):
             await ctx.send("There are no more tracks in the queue.")
 
@@ -369,16 +370,19 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
         if isinstance(exc, exceptions.QueueIsEmpty):
             await ctx.send("The queue is currently empty.")
 
-    @decorators.command(name="repeat")
-    async def repeat_command(self, ctx, mode: str):
-        if mode not in ("none", "1", "all"):
-            raise exceptions.InvalidRepeatMode
+    @decorators.command(name="repeat", aliases=['loop'])
+    async def repeat_command(self, ctx, mode: str = None):
+        modes = ("none", "1", "all", "one")
+        if mode is None:
+            mode = "all"
+        if mode.lower() not in modes:
+            raise commands.BadArgument(f"Valid Options: ```prolog\n{', '.join(modes)}```")
 
         player = self.get_player(ctx)
         player.queue.set_repeat_mode(mode)
-        await ctx.send(f"The repeat mode has been set to {mode}.")
+        await ctx.send(f"The {ctx.command.invoked_with} mode has been set to `{mode}`")
 
-    @decorators.command(name="queue")
+    @decorators.command(name="queue", aliases=["q"])
     async def queue_command(self, ctx, show: t.Optional[int] = 10):
         player = self.get_player(ctx)
 
@@ -457,7 +461,18 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
         await player.seek(player.position - seconds * 1000)
         await ctx.message.add_reaction(self.bot.emote_dict['candy'])
 
-    
+    @decorators.command(
+        aliases=['np','nowplaying'],
+        brief="Show information on the current song.",
+    )
+    async def playing(self, ctx):
+        player = self.get_player(ctx)
+        em = discord.Embed(color=self.bot.constants.embed)
+        em.title = f"Now Playing: {player.current.title}"
+        em.description = f"```prolog\n{utils.makeBar(round(player.position / player.current.duration, 2))}```\n**URL: **{player.current.uri}"
+        em.set_thumbnail(url=player.current.thumb)
+        await ctx.send_or_reply(embed=em)
+
 
 def setup(bot):
     bot.add_cog(Music(bot))
