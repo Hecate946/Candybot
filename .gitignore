@@ -10,3 +10,4 @@
 *.out
 **.jdk
 *.jar
+*.yml
