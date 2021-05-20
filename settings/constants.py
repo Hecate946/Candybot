@@ -94,6 +94,6 @@ emotes = {
     "pass": "<:pass:840817730277867541>",
     "fail": "<:fail:840817815148953600>",
     "snowflake": "<:snowflake:841848061412376596>",
-    "candy": "<:purplecandy:844688043247009812>",
+    "candy": "<:purplecandy:844724185842712576>",
     "cupcake": "<:purplecupcake:844688309195374602>"
 }
